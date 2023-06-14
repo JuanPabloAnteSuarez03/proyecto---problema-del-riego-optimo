@@ -73,31 +73,56 @@ package object riego{
 
   //Funciones 2.3.1 Calculando el tiempo de inicio de riego
   def tIR(f: Finca, pi: ProgRiego): TiempoInicioRiego = {
-    // Dada una finca f y una programación de riego pi,
-    // y f.length == n, tIR(f, pi) devuelve t: TiempoInicioRiego
-    // tal que t(i) es el tiempo en que inicia el riego del
-    // tablón i de la finca f según pi
-    
+    val tIR = new Array[Int](f.length)
+
+    tIR(pi(0)) = 0
+    for (j <- 1 until f.length) {
+      tIR(pi(j)) = tIR(pi(j - 1)) + tReg(f, pi(j - 1))
+    }
+
+    tIR.toVector
   }
+
 
   //Funciones 2.3.2 Calculando costos
   def costoRiegoTablon(i: Int, f: Finca, pi: ProgRiego): Int = {
-    // devuelve el costo de regar el tablón i de la finca f
-    // con la programación pi
-    
+    val tsFi = tSup(f, i)//10
+    val trFi = tReg(f, i)//3
+    val pFi = prio(f, i)//4
+
+    if (tsFi - trFi >= tIR(f, pi)(i)) {
+      tsFi - (tIR(f, pi)(i) + trFi)
+    } else {
+      pFi * ((tIR(f, pi)(i) + trFi) - tsFi)
+    }
   }
 
   def costoRiegoFinca(f: Finca, pi: ProgRiego): Int = {
-    // devuelve el costo total de regar una finca f dada
-    // una programación de riego pi
-    
+    var totalCost = 0
+
+    for (i <- 0 until f.length) {
+      val costoTablon = costoRiegoTablon(i, f, pi)
+      totalCost += costoTablon
+    }
+
+    totalCost
   }
 
   def costoMovilidad(f: Finca, pi: ProgRiego, d: Distancia): Int = {
-    // ...
-    
+    var totalCost = 0
+
+    for (j <- 0 until f.length - 1) {
+      val tablonActual = pi(j)
+      val tablonSiguiente = pi(j + 1)
+      val costoMovimiento = d(tablonActual)(tablonSiguiente)
+      totalCost += costoMovimiento
+    }
+
+    totalCost
   }
 
+
+/*
   //Funciones 2.3.3 Generando programaciones de riego
   def generarProgramacionesRiego(f: Finca): Vector[ProgRiego] = {
   // Dada una finca de n tablones, devuelve todas las
@@ -110,5 +135,5 @@ package object riego{
   // Dada una finca, devuelve la programación de riego óptima
   
   }
-
+*/
 }
