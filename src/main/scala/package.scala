@@ -122,18 +122,48 @@ package object riego{
   }
 
 
-/*
+
   //Funciones 2.3.3 Generando programaciones de riego
   def generarProgramacionesRiego(f: Finca): Vector[ProgRiego] = {
-  // Dada una finca de n tablones, devuelve todas las
-  // posibles programaciones de riego de la finca
-  
+    def generarProgramacionesRecursivo(progActual: ProgRiego, restantes: Vector[Int]): Vector[ProgRiego] = {
+      if (restantes.isEmpty) {
+        Vector(progActual)
+      } else {
+        val indiceActual = f.length - restantes.length 
+        val indiceRestantes = restantes.indices.toVector 
+
+        indiceRestantes.flatMap { indice =>
+          val nuevaProg = progActual.updated(indiceActual, restantes(indice)) 
+          val nuevosRestantes = restantes.patch(indice, Nil, 1) 
+          generarProgramacionesRecursivo(nuevaProg, nuevosRestantes) 
+        }
+      }
+    }
+
+    val progInicial = Vector.fill(f.length)(0) 
+    val tablonesRestantes = (0 until f.length).toVector 
+
+    generarProgramacionesRecursivo(progInicial, tablonesRestantes)
   }
 
-  //Funciones 2.3.4 Calculando una programacion de riego optimo
   def ProgramacionRiegoOptimo(f: Finca, d: Distancia): (ProgRiego, Int) = {
-  // Dada una finca, devuelve la programación de riego óptima
-  
+    val programaciones = generarProgramacionesRiego(f) 
+    var costoMinimo = Int.MaxValue
+    var programacionOptima = Vector.empty[Int]
+
+    for (prog <- programaciones) {
+      val costoRiego = costoRiegoFinca(f, prog) 
+      val costoMovilidadFinca = costoMovilidad(f, prog, d) 
+      val costoTotal = costoRiego + costoMovilidadFinca
+
+      if (costoTotal < costoMinimo) {
+        costoMinimo = costoTotal
+        programacionOptima = prog
+      }
+    }
+
+    (programacionOptima, costoMinimo)
   }
-*/
+
+
 }
