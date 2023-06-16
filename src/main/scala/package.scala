@@ -165,5 +165,25 @@ package object riego{
     (programacionOptima, costoMinimo)
   }
 
+  //Se añade alternativa sin usar For o Var, ya que no se consideran propios del paradigma
+def ProgramacionRiegoOptimo(f: Finca, d: Distancia): (ProgRiego, Int) = {
+  val programaciones = generarProgramacionesRiego(f)
+  
+  val (costoMinimo, programacionOptima) = programaciones.foldLeft((Int.MaxValue, Vector.empty[Int])) {
+    case ((minCost, optProg), prog) =>
+      val costoRiego = costoRiegoFinca(f, prog)
+      val costoMovilidadFinca = costoMovilidad(f, prog, d)
+      val costoTotal = costoRiego + costoMovilidadFinca
+
+      if (costoTotal < minCost)
+        (costoTotal, prog)
+      else
+        (minCost, optProg)
+  }
+
+  (programacionOptima, costoMinimo)
+}
+
+
 
 }
