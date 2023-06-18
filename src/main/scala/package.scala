@@ -58,7 +58,6 @@ package object riego{
   }
 
   //Funciones usadas para explorar las entradas
-
   def tSup(f: Finca, i: Int): Int = {
     f(i)._1
   }
@@ -73,16 +72,16 @@ package object riego{
 
   //Funciones 2.3.1 Calculando el tiempo de inicio de riego
   def tIR(f: Finca, pi: ProgRiego): TiempoInicioRiego = {
-    val tIR = new Array[Int](f.length)
-
-    tIR(pi(0)) = 0
-    for (j <- 1 until f.length) {
-      tIR(pi(j)) = tIR(pi(j - 1)) + tReg(f, pi(j - 1))
+    def tIRAux(j: Int, acc: Vector[Int]): Vector[Int] = {
+      if (j >= f.length) acc
+      else {
+        val tIRj = if (j == 0) 0 else acc(pi(j - 1)) + tReg(f, pi(j - 1))
+        tIRAux(j + 1, acc.updated(pi(j), tIRj))
+      }
     }
 
-    tIR.toVector
+    tIRAux(0, Vector.fill(f.length)(0))
   }
-
 
   //Funciones 2.3.2 Calculando costos
   def costoRiegoTablon(i: Int, f: Finca, pi: ProgRiego): Int = {
@@ -98,29 +97,17 @@ package object riego{
   }
 
   def costoRiegoFinca(f: Finca, pi: ProgRiego): Int = {
-    var totalCost = 0
-
-    for (i <- 0 until f.length) {
-      val costoTablon = costoRiegoTablon(i, f, pi)
-      totalCost += costoTablon
+    val totalCost = (0 until f.length).foldLeft(0) { (acc, i) =>
+      acc + costoRiegoTablon(i, f, pi)
     }
-
     totalCost
   }
 
   def costoMovilidad(f: Finca, pi: ProgRiego, d: Distancia): Int = {
-    var totalCost = 0
-
-    for (j <- 0 until f.length - 1) {
-      val tablonActual = pi(j)
-      val tablonSiguiente = pi(j + 1)
-      val costoMovimiento = d(tablonActual)(tablonSiguiente)
-      totalCost += costoMovimiento
-    }
-
-    totalCost
+    val movimientos = if (pi.length > 1) pi.sliding(2).toVector else Vector.empty
+    val costosMovimiento = movimientos.map { case Vector(t1, t2) => d(t1)(t2) }
+    costosMovimiento.sum
   }
-
 
 
   //Funciones 2.3.3 Generando programaciones de riego
@@ -146,43 +133,24 @@ package object riego{
     generarProgramacionesRecursivo(progInicial, tablonesRestantes)
   }
 
+  //Se añade alternativa sin usar For o Var, ya que no se consideran propios del paradigma
   def ProgramacionRiegoOptimo(f: Finca, d: Distancia): (ProgRiego, Int) = {
-    val programaciones = generarProgramacionesRiego(f) 
-    var costoMinimo = Int.MaxValue
-    var programacionOptima = Vector.empty[Int]
+    val programaciones = generarProgramacionesRiego(f)
+    
+    val (costoMinimo, programacionOptima) = programaciones.foldLeft((Int.MaxValue, Vector.empty[Int])) {
+      case ((minCost, optProg), prog) =>
+        val costoRiego = costoRiegoFinca(f, prog)
+        val costoMovilidadFinca = costoMovilidad(f, prog, d)
+        val costoTotal = costoRiego + costoMovilidadFinca
 
-    for (prog <- programaciones) {
-      val costoRiego = costoRiegoFinca(f, prog) 
-      val costoMovilidadFinca = costoMovilidad(f, prog, d) 
-      val costoTotal = costoRiego + costoMovilidadFinca
-
-      if (costoTotal < costoMinimo) {
-        costoMinimo = costoTotal
-        programacionOptima = prog
-      }
+        if (costoTotal < minCost)
+          (costoTotal, prog)
+        else
+          (minCost, optProg)
     }
 
     (programacionOptima, costoMinimo)
   }
-
-  //Se añade alternativa sin usar For o Var, ya que no se consideran propios del paradigma
-def ProgramacionRiegoOptimo(f: Finca, d: Distancia): (ProgRiego, Int) = {
-  val programaciones = generarProgramacionesRiego(f)
-  
-  val (costoMinimo, programacionOptima) = programaciones.foldLeft((Int.MaxValue, Vector.empty[Int])) {
-    case ((minCost, optProg), prog) =>
-      val costoRiego = costoRiegoFinca(f, prog)
-      val costoMovilidadFinca = costoMovilidad(f, prog, d)
-      val costoTotal = costoRiego + costoMovilidadFinca
-
-      if (costoTotal < minCost)
-        (costoTotal, prog)
-      else
-        (minCost, optProg)
-  }
-
-  (programacionOptima, costoMinimo)
-}
 
 
 

@@ -27,8 +27,8 @@ val distancia: Distancia = Vector(
   Vector(4, 6, 2, 4, 0)
 )
 
-val programacion1: ProgRiego = Vector( 0, 1, 4, 2, 3 )
-tIR(finca, programacion1)
+val programacion1: ProgRiego = Vector(0, 1, 4, 2, 3)
+tIR(finca, programacion1) 
 costoRiegoTablon(1, finca, programacion1)
 costoRiegoFinca(finca, programacion1)
 costoMovilidad(finca, programacion1, distancia)
