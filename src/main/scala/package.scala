@@ -1,5 +1,8 @@
+import scala.util.Random
+import common._
+
 package object riego{
-  import scala.util.Random
+
 
   // Un tablon es una tripleta con el tiempo de supervivencia,
   // el tiempo de riego y la prioridad del tablon
@@ -151,7 +154,65 @@ package object riego{
 
     (programacionOptima, costoMinimo)
   }
+  //Funciones 2.4.1. Paralelizando el calculo de los costos de riego y de movilidad
 
+  def costoRiegoFincaPar(f: Finca, pi: ProgRiego): Int = {
+    val totalCost = (0 until f.length).par.fold(0) { (acc, i) =>
+      acc + costoRiegoTablon(i, f, pi)
+    }
+    totalCost
+  }
+
+  def costoMovilidadPar(f: Finca, pi: ProgRiego, d: Distancia): Int = {
+    val movimientos = if (pi.length > 1) pi.sliding(2).toVector else Vector.empty
+    movimientos.par.map { case Vector(t1, t2) => d(t1)(t2) }.reduce(_ + _)
+  }
+
+  //Funciones 2.4.2. Paralelizando la generacion de programaciones de riego
+  def generarProgramacionesRiegoPar(f: Finca): Vector[ProgRiego] = {
+    def generarProgramacionesRecursivo(progActual: ProgRiego, restantes: Vector[Int]): Vector[ProgRiego] = {
+      if (restantes.isEmpty) {
+        Vector(progActual)
+      } else {
+
+        val task1 = task(f.length - restantes.length)
+        val task2 = task(restantes.indices.toVector)
+
+        val indiceActual = task1.join
+        val indiceRestantes = task2.join
+
+        indiceRestantes.flatMap { indice =>
+          val nuevaProg = progActual.updated(indiceActual, restantes(indice))
+          val nuevosRestantes = restantes.patch(indice, Nil, 1)
+          generarProgramacionesRecursivo(nuevaProg, nuevosRestantes)
+        }
+      }
+    }
+
+    val progInicial = Vector.fill(f.length)(0)
+    val tablonesRestantes = (0 until f.length).toVector
+
+    generarProgramacionesRecursivo(progInicial, tablonesRestantes)
+  }
+
+  //Funciones 2.4.3. Paralelizando la programacion de riego optimo
+  def ProgramacionRiegoOptimoPar(f: Finca, d: Distancia): (ProgRiego, Int) = {
+    val programaciones = generarProgramacionesRiego(f)
+
+    val (costoMinimo, programacionOptima) = programaciones.foldLeft((Int.MaxValue, Vector.empty[Int])) {
+      case ((minCost, optProg), prog) =>
+        val costoRiego = costoRiegoFinca(f, prog)
+        val costoMovilidadFinca = costoMovilidad(f, prog, d)
+        val costoTotal = costoRiego + costoMovilidadFinca
+
+        if (costoTotal < minCost)
+          (costoTotal, prog)
+        else
+          (minCost, optProg)
+    }
+
+    (programacionOptima, costoMinimo)
+  }
 
 
 }
