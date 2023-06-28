@@ -1,7 +1,9 @@
-import scala.util.Random
 import common._
 
-package object riego{
+import scala.collection.parallel.CollectionConverters._
+import scala.util.Random
+
+package object riego {
 
 
   // Un tablon es una tripleta con el tiempo de supervivencia,
@@ -189,8 +191,10 @@ package object riego{
       }
     }
 
-    val progInicial = Vector.fill(f.length)(0)
-    val tablonesRestantes = (0 until f.length).toVector
+    val task3 = task(Vector.fill(f.length)(0))
+    val task4 = task((0 until f.length).toVector)
+    val progInicial = task3.join
+    val tablonesRestantes = task4.join
 
     generarProgramacionesRecursivo(progInicial, tablonesRestantes)
   }
