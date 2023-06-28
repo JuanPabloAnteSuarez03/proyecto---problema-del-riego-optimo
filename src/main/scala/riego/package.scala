@@ -159,9 +159,7 @@ package object riego {
   //Funciones 2.4.1. Paralelizando el calculo de los costos de riego y de movilidad
 
   def costoRiegoFincaPar(f: Finca, pi: ProgRiego): Int = {
-    val totalCost = (0 until f.length).par.fold(0) { (acc, i) =>
-      acc + costoRiegoTablon(i, f, pi)
-    }
+    val totalCost = (0 until f.length).par.map(i => costoRiegoTablon(i, f, pi)).sum
     totalCost
   }
 
@@ -205,8 +203,10 @@ package object riego {
 
     val (costoMinimo, programacionOptima) = programaciones.foldLeft((Int.MaxValue, Vector.empty[Int])) {
       case ((minCost, optProg), prog) =>
-        val costoRiego = costoRiegoFinca(f, prog)
-        val costoMovilidadFinca = costoMovilidad(f, prog, d)
+        val task1 = task(costoRiegoFinca(f, prog))
+        val task2 = task(costoMovilidad(f, prog, d))
+        val costoRiego = task1.join()
+        val costoMovilidadFinca = task2.join()
         val costoTotal = costoRiego + costoMovilidadFinca
 
         if (costoTotal < minCost)
