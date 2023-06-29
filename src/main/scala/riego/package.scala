@@ -116,6 +116,7 @@ package object riego {
 
 
   //Funciones 2.3.3 Generando programaciones de riego
+
   def generarProgramacionesRiego(f: Finca): Vector[ProgRiego] = {
     def generarProgramacionesRecursivo(progActual: ProgRiego, restantes: Vector[Int]): Vector[ProgRiego] = {
       if (restantes.isEmpty) {
@@ -137,6 +138,7 @@ package object riego {
 
     generarProgramacionesRecursivo(progInicial, tablonesRestantes)
   }
+
 
   //Se añade alternativa sin usar For o Var, ya que no se consideran propios del paradigma
   def ProgramacionRiegoOptimo(f: Finca, d: Distancia): (ProgRiego, Int) = {
@@ -169,54 +171,53 @@ package object riego {
   }
 
   //Funciones 2.4.2. Paralelizando la generacion de programaciones de riego
+
   def generarProgramacionesRiegoPar(f: Finca): Vector[ProgRiego] = {
-    def generarProgramacionesRecursivo(progActual: ProgRiego, restantes: Vector[Int]): Vector[ProgRiego] = {
+    def generarProgramacionesRecursivoPar(progActual: ProgRiego, restantes: Vector[Int]): Vector[ProgRiego] = {
       if (restantes.isEmpty) {
         Vector(progActual)
       } else {
+        val indiceActual = f.length - restantes.length
+        val indiceRestantes = restantes.indices.toVector
 
-        val task1 = task(f.length - restantes.length)
-        val task2 = task(restantes.indices.toVector)
-
-        val indiceActual = task1.join
-        val indiceRestantes = task2.join
-
-        indiceRestantes.flatMap { indice =>
-          val nuevaProg = progActual.updated(indiceActual, restantes(indice))
-          val nuevosRestantes = restantes.patch(indice, Nil, 1)
-          generarProgramacionesRecursivo(nuevaProg, nuevosRestantes)
+        val programacionesTask = indiceRestantes.map { indice =>
+          task {
+            val nuevaProg = progActual.updated(indiceActual, restantes(indice))
+            val nuevosRestantes = restantes.patch(indice, Nil, 1)
+            generarProgramacionesRecursivoPar(nuevaProg, nuevosRestantes)
+          }
         }
+
+        val programacionesPar = programacionesTask.map(_.join())
+
+        programacionesPar.fold(Vector.empty)(_ ++ _)
       }
     }
 
-    val task3 = task(Vector.fill(f.length)(0))
-    val task4 = task((0 until f.length).toVector)
-    val progInicial = task3.join
-    val tablonesRestantes = task4.join
+    val progInicial = Vector.fill(f.length)(0)
+    val tablonesRestantes = (0 until f.length).toVector
 
-    generarProgramacionesRecursivo(progInicial, tablonesRestantes)
+    generarProgramacionesRecursivoPar(progInicial, tablonesRestantes)
   }
+
+
 
   //Funciones 2.4.3. Paralelizando la programacion de riego optimo
-  def ProgramacionRiegoOptimoPar(f: Finca, d: Distancia): (ProgRiego, Int) = {
-    val programaciones = generarProgramacionesRiego(f)
+def ProgramacionRiegoOptimoPar(f: Finca, d: Distancia): (ProgRiego, Int) = {
+  val programaciones = generarProgramacionesRiegoPar(f)
 
-    val (costoMinimo, programacionOptima) = programaciones.foldLeft((Int.MaxValue, Vector.empty[Int])) {
-      case ((minCost, optProg), prog) =>
-        val task1 = task(costoRiegoFinca(f, prog))
-        val task2 = task(costoMovilidad(f, prog, d))
-        val costoRiego = task1.join()
-        val costoMovilidadFinca = task2.join()
-        val costoTotal = costoRiego + costoMovilidadFinca
+  val (costoMinimo, programacionOptima) = programaciones.par.map { prog =>
+    val costoRiego = costoRiegoFinca(f, prog)
+    val costoMovilidadFinca = costoMovilidad(f, prog, d)
+    val costoTotal = costoRiego + costoMovilidadFinca
 
-        if (costoTotal < minCost)
-          (costoTotal, prog)
-        else
-          (minCost, optProg)
-    }
+    (costoTotal, prog)
+  }.minBy(_._1)
 
-    (programacionOptima, costoMinimo)
-  }
+  (programacionOptima, costoMinimo)
+}
+
+
 
 
 }
