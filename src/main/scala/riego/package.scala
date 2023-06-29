@@ -62,6 +62,11 @@ package object riego {
     }
   }
 
+  def generarProgramacionRiego(i: Int): ProgRiego = {
+    Vector.tabulate(i)(identity)
+  }
+
+
   //Funciones usadas para explorar las entradas
   def tSup(f: Finca, i: Int): Int = {
     f(i)._1
@@ -167,8 +172,14 @@ package object riego {
 
   def costoMovilidadPar(f: Finca, pi: ProgRiego, d: Distancia): Int = {
     val movimientos = if (pi.length > 1) pi.sliding(2).toVector else Vector.empty
-    movimientos.par.map { case Vector(t1, t2) => d(t1)(t2) }.reduce(_ + _)
+    val costosMovimiento = movimientos.map { case Vector(t1, t2) => d(t1)(t2) }
+
+    if (costosMovimiento.nonEmpty)
+      costosMovimiento.par.reduce(_ + _)
+    else
+      0
   }
+
 
   //Funciones 2.4.2. Paralelizando la generacion de programaciones de riego
 
@@ -207,8 +218,8 @@ def ProgramacionRiegoOptimoPar(f: Finca, d: Distancia): (ProgRiego, Int) = {
   val programaciones = generarProgramacionesRiegoPar(f)
 
   val (costoMinimo, programacionOptima) = programaciones.par.map { prog =>
-    val costoRiego = costoRiegoFinca(f, prog)
-    val costoMovilidadFinca = costoMovilidad(f, prog, d)
+    val costoRiego = costoRiegoFincaPar(f, prog)
+    val costoMovilidadFinca = costoMovilidadPar(f, prog, d)
     val costoTotal = costoRiego + costoMovilidadFinca
 
     (costoTotal, prog)
